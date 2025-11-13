@@ -1,44 +1,24 @@
 app = "cnipheadless"
 primary_region = "bru"
 
-[build]
-  [build.args]
-    NEXT_PUBLIC_STORYBLOK_TOKEN = "${STORYBLOK_TOKEN}"
-
-[env]
-  PORT = "3000"
-
-[http_service]
-  internal_port = 3000
-  force_https = true
-  auto_stop_machines = true
-  auto_start_machines = true
-  min_machines_running = 0
-  processes = ["app"]
-
-  [[http_service.ports]]
-    port = 80
-    handlers = ["http"]
-
-  [[http_service.ports]]
-    port = 443
-    handlers = ["tls", "http"]
-
+# Definieer het proces 'app'
 [processes]
-  app = "node server.js"
+  app = ""
 
+# Koppel de service expliciet aan het 'app'-proces
 [[services]]
+  processes = ["app"]
   internal_port = 3000
   protocol = "tcp"
-
-  [[services.ports]]
-    handlers = ["http"]
-    port = 80
-
-  [[services.ports]]
-    handlers = ["tls", "http"]
-    port = 443
 
   [services.concurrency]
     hard_limit = 40
     soft_limit = 20
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
