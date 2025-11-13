@@ -1,0 +1,53 @@
+name: Deploy to Fly (bru)
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - run: npm ci || npm install
+      - run: npm run build
+
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          # maak fly.toml als die nog niet bestaat
+          if [ ! -f fly.toml ]; then
+            cat > fly.toml <<'EOF'
+app = "cnip-site"
+primary_region = "bru"
+
+[build]
+
+[[services]]
+  internal_port = 3000
+  processes = ["app"]
+  protocol = "tcp"
+  [services.concurrency]
+    hard_limit = 40
+    soft_limit = 20
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+EOF
+          fi
+
+          # deploy (remote build, geen lokale tooling nodig)
+          flyctl deploy --remote-only --build-arg NEXT_TELEMETRY_DISABLED=1
