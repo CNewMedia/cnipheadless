@@ -1,10 +1,9 @@
-      - name: Deploy
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-          STORYBLOK_TOKEN: ${{ secrets.STORYBLOK_TOKEN }}
-        run: |
-          # 1) Schrijf fly.toml ELKE keer (overschrijven)
-          cat > fly.toml <<'EOF'
+- name: Deploy
+  env:
+    FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    STORYBLOK_TOKEN: ${{ secrets.STORYBLOK_TOKEN }}
+  run: |
+    cat > fly.toml <<'EOF'
 app = "cnipheadless"
 primary_region = "bru"
 
@@ -26,8 +25,5 @@ primary_region = "bru"
     port = 443
 EOF
 
-          # 2) Zet ook als Fly secret (belt-and-suspenders)
-          flyctl secrets set STORYBLOK_TOKEN="${STORYBLOK_TOKEN}" -a cnipheadless -y
-
-          # 3) Deploy
-          flyctl deploy --remote-only --build-arg NEXT_TELEMETRY_DISABLED=1
+    flyctl secrets set STORYBLOK_TOKEN="${STORYBLOK_TOKEN}" -a cnipheadless -y
+    flyctl deploy --remote-only --build-arg NEXT_TELEMETRY_DISABLED=1
