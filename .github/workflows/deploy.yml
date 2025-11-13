@@ -28,7 +28,7 @@ jobs:
           # maak fly.toml als die nog niet bestaat
           if [ ! -f fly.toml ]; then
             cat > fly.toml <<'EOF'
-app = "cnip-site"
+app = "cnipheadless"
 primary_region = "bru"
 
 [build]
