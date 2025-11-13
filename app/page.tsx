@@ -7,7 +7,7 @@ type SBStory = { story?: { content?: { title?: string; intro?: string } } };
 
 async function getHome(): Promise<SBStory> {
   const token = process.env.STORYBLOK_TOKEN || PUBLIC_FALLBACK;
-  const url = `https://api.storyblok.com/v2/cdn/stories/home?token=${token}&version=draft`;
+  const url = `https://api.storyblok.com/v2/cdn/stories/home?token=${token}&version=published&cv=${Date.now()}`;
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) return {};
   return res.json();
