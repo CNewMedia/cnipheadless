@@ -7,46 +7,36 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install flyctl
-        uses: superfly/flyctl-actions/setup-flyctl@v1
-
-      - name: Write fly.toml (overwrite)
-        run: |
-          cat > fly.toml <<'EOF'
-app = "cnipheadless"
-primary_region = "bru"
-
-[env]
-  STORYBLOK_TOKEN = "${STORYBLOK_TOKEN}"
-
-[[services]]
-  internal_port = 3000
-  processes = ["app"]
-  protocol = "tcp"
-  [services.concurrency]
-    hard_limit = 40
-    soft_limit = 20
-  [[services.ports]]
-    handlers = ["http"]
-    port = 80
-  [[services.ports]]
-    handlers = ["tls", "http"]
-    port = 443
-EOF
-
-      - name: Ensure secret on Fly
+      # 0) Secrets check – faalt met duidelijke foutmelding als iets ontbreekt
+      - name: Verify required secrets
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           STORYBLOK_TOKEN: ${{ secrets.STORYBLOK_TOKEN }}
         run: |
-          flyctl secrets set STORYBLOK_TOKEN="${STORYBLOK_TOKEN}" -a cnipheadless -y
+          if [ -z "$FLY_API_TOKEN" ]; then
+            echo "::error:: Missing FLY_API_TOKEN secret"; exit 1; fi
+          if [ -z "$STORYBLOK_TOKEN" ]; then
+            echo "::error:: Missing STORYBLOK_TOKEN secret"; exit 1; fi
+          echo "✅ Secrets present"
 
-      - name: Deploy (remote build)
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@v1
+
+      # 1) Auth & account sanity check (maakt fout zichtbaar als token niet werkt)
+      - name: Fly auth & app check
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          flyctl deploy --remote-only --auto-confirm --build-arg NEXT_TELEMETRY_DISABLED=1
+          set -e
+          flyctl auth token || true
+          echo "flyctl version:"
+          flyctl version
+          echo "Apps visible to this token:"
+          flyctl apps list | sed -n '1,30p'
+          echo "Info for app cnipheadless:"
+          flyctl status -a
