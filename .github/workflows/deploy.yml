@@ -7,12 +7,11 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 0) Secrets check – faalt met duidelijke foutmelding als iets ontbreekt
+      # 0) Secrets check – duidelijke fout als iets ontbreekt
       - name: Verify required secrets
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -27,16 +26,56 @@ jobs:
       - name: Install flyctl
         uses: superfly/flyctl-actions/setup-flyctl@v1
 
-      # 1) Auth & account sanity check (maakt fout zichtbaar als token niet werkt)
+      # 1) (optioneel) snelle auth/app check voor duidelijke logs
       - name: Fly auth & app check
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
           set -e
-          flyctl auth token || true
-          echo "flyctl version:"
           flyctl version
-          echo "Apps visible to this token:"
-          flyctl apps list | sed -n '1,30p'
-          echo "Info for app cnipheadless:"
-          flyctl status -a
+          flyctl apps list | sed -n '1,30p' || true
+          flyctl status -a cnipheadless || true
+
+      # 2) Schrijf fly.toml ALTIJD (overschrijven voorkomt oude config)
+      - name: Write fly.toml (overwrite)
+        env:
+          STORYBLOK_TOKEN: ${{ secrets.STORYBLOK_TOKEN }}
+        run: |
+          cat > fly.toml <<'EOF'
+app = "cnipheadless"
+primary_region = "bru"
+
+[env]
+  STORYBLOK_TOKEN = "${STORYBLOK_TOKEN}"
+
+[[services]]
+  internal_port = 3000
+  processes = ["app"]
+  protocol = "tcp"
+  [services.concurrency]
+    hard_limit = 40
+    soft_limit = 20
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+EOF
+          echo "✅ fly.toml written"
+
+      # 3) Zet secret ook op Fly (idempotent)
+      - name: Ensure secret on Fly
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          STORYBLOK_TOKEN: ${{ secrets.STORYBLOK_TOKEN }}
+        run: |
+          flyctl secrets set STORYBLOK_TOKEN="${STORYBLOK_TOKEN}" -a cnipheadless -y
+          echo "✅ Secret set on Fly"
+
+      # 4) Remote build & deploy (geen npm build in Actions)
+      - name: Deploy (remote build)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl deploy --remote-only --auto-confirm --build-arg NEXT_TELEMETRY_DISABLED=1
