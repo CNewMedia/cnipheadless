@@ -1,19 +1,35 @@
 app = "cnipheadless"
 primary_region = "bru"
 
+[build]
+  [build.args]
+    NEXT_PUBLIC_STORYBLOK_TOKEN = "${STORYBLOK_TOKEN}"
+
 [env]
-  # Fly leest dit op runtime uit je secret (STORYBLOK_TOKEN)
-  # Deze env key mag blijven staan; waarde hoeft hier niet ingevuld.
-  STORYBLOK_TOKEN = ""
+  PORT = "3000"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.ports]]
+    port = 80
+    handlers = ["http"]
+
+  [[http_service.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+[processes]
+  app = "node server.js"
 
 [[services]]
   internal_port = 3000
-  processes = ["app"]
   protocol = "tcp"
-
-  [services.concurrency]
-    hard_limit = 40
-    soft_limit = 20
 
   [[services.ports]]
     handlers = ["http"]
@@ -22,3 +38,7 @@ primary_region = "bru"
   [[services.ports]]
     handlers = ["tls", "http"]
     port = 443
+
+  [services.concurrency]
+    hard_limit = 40
+    soft_limit = 20
