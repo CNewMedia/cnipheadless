@@ -6,4 +6,4 @@ export default function Home() {
       <a className="underline" href="/seo">→ SEO Aanvraag</a>
     </main>
   );
-}
+} 
