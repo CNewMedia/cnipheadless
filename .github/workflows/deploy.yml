@@ -1,9 +1,22 @@
-- name: Deploy
-  env:
-    FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-    STORYBLOK_TOKEN: ${{ secrets.STORYBLOK_TOKEN }}
-  run: |
-    cat > fly.toml <<'EOF'
+name: Deploy to Fly (bru)
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@v1
+
+      - name: Write fly.toml (overwrite)
+        run: |
+          cat > fly.toml <<'EOF'
 app = "cnipheadless"
 primary_region = "bru"
 
@@ -25,5 +38,15 @@ primary_region = "bru"
     port = 443
 EOF
 
-    flyctl secrets set STORYBLOK_TOKEN="${STORYBLOK_TOKEN}" -a cnipheadless -y
-    flyctl deploy --remote-only --build-arg NEXT_TELEMETRY_DISABLED=1 
+      - name: Ensure secret on Fly
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          STORYBLOK_TOKEN: ${{ secrets.STORYBLOK_TOKEN }}
+        run: |
+          flyctl secrets set STORYBLOK_TOKEN="${STORYBLOK_TOKEN}" -a cnipheadless -y
+
+      - name: Deploy (remote build)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl deploy --remote-only --auto-confirm --build-arg NEXT_TELEMETRY_DISABLED=1
