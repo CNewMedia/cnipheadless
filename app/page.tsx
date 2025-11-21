@@ -73,30 +73,57 @@ export default function HomePage() {
       });
     });
 
-    // === GSAP animations ===
-    if (typeof window !== "undefined" && (window as any).gsap) {
-      const gsap = (window as any).gsap;
-      const ScrollTrigger = (window as any).ScrollTrigger;
-      if (gsap && ScrollTrigger) {
-        gsap.registerPlugin(ScrollTrigger);
-        gsap.utils
-          .toArray(".service-card, .work-item, .client-card")
-          .forEach((el: any, i: number) => {
-            gsap.from(el, {
-              opacity: 0,
-              y: 30,
-              duration: 0.8,
-              delay: i * 0.03,
-              ease: "power2.out",
-              scrollTrigger: {
-                trigger: el,
-                start: "top 85%",
-                once: true,
-              },
-            });
-          });
-      }
+
+    // === Lenis smooth scroll + GSAP ScrollTrigger ===
+    gsap.registerPlugin(ScrollTrigger);
+
+    // 1. Lenis initialiseren
+    const lenis = new Lenis({
+      lerp: 0.1,          // hoe "smooth" (0–1)
+      wheelMultiplier: 1, // scroll-gevoel
+      touchMultiplier: 1.2,
+      smoothWheel: true,
+      smoothTouch: true,
+    });
+
+    // 2. Lenis en GSAP aan elkaar koppelen
+    function raf(time: number) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
     }
+    requestAnimationFrame(raf);
+
+    lenis.on("scroll", () => {
+      ScrollTrigger.update();
+    });
+
+    // 3. Animaties op je kaarten
+    gsap.utils
+      .toArray<HTMLElement>(".service-card, .work-item, .client-card")
+      .forEach((el, i) => {
+        gsap.from(el, {
+          opacity: 0,
+          y: 30,
+          duration: 0.8,
+          delay: i * 0.03,
+          ease: "power2.out",
+          scrollTrigger: {
+            trigger: el,
+            start: "top 85%",
+            once: true,
+          },
+        });
+      });
+
+    // 4. Cleanup bij unmount (veiligheid)
+    return () => {
+      lenis.destroy();
+      ScrollTrigger.getAll().forEach((t) => t.kill());
+    };
+
+
+    
+  
   }, []);
 
   return (
