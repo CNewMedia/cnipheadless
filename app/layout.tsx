@@ -1,3 +1,4 @@
+import "./globals.css";
 export const metadata = { title: "CNIP", description: "Systematic Marketing Execution" };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
